@@ -61,7 +61,9 @@ export async function getTransactions(
       id: p.id,
       date: (props["날짜"]?.date as Record<string, string>)?.start ?? "",
       type: (
-        (props["유형"]?.select as Record<string, string>)?.name ?? "expense"
+        (props["유형"]?.select as Record<string, string>)?.name === "수입"
+          ? "income"
+          : "expense"
       ) as TransactionType,
       category: (
         (props["카테고리"]?.select as Record<string, string>)?.name ?? "기타지출"
