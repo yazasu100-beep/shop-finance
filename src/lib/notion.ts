@@ -1,11 +1,5 @@
 import { Client } from "@notionhq/client";
 import type {
-  QueryDatabaseParameters,
-  UpdatePageParameters,
-} from "@notionhq/client/build/src/api-endpoints";
-
-type PageProperties = NonNullable<UpdatePageParameters["properties"]>;
-import type {
   Transaction,
   PlatformSale,
   TransactionType,
@@ -13,22 +7,35 @@ import type {
   Platform,
 } from "@/types";
 
-type DBFilter = NonNullable<QueryDatabaseParameters["filter"]>;
-
-function buildDateFilter(startDate?: string, endDate?: string): DBFilter | undefined {
-  if (!startDate && !endDate) return undefined;
-  const conditions = [
-    ...(startDate ? [{ property: "날짜", date: { on_or_after: startDate } }] : []),
-    ...(endDate ? [{ property: "날짜", date: { on_or_before: endDate } }] : []),
-  ];
-  if (conditions.length === 1) return conditions[0] as DBFilter;
-  return { and: conditions } as DBFilter;
-}
-
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
 const TRANSACTIONS_DB_ID = process.env.NOTION_TRANSACTIONS_DB_ID!;
 const PLATFORM_SALES_DB_ID = process.env.NOTION_PLATFORM_SALES_DB_ID!;
+
+// Notion SDK 타입을 내부 경로 없이 안전하게 추론
+type QueryArgs = Parameters<typeof notion.databases.query>[0];
+type DBFilter = NonNullable<QueryArgs["filter"]>;
+type UpdateArgs = Parameters<typeof notion.pages.update>[0];
+type PageProperties = NonNullable<UpdateArgs["properties"]>;
+
+function buildDateFilter(
+  startDate?: string,
+  endDate?: string
+): DBFilter | undefined {
+  if (!startDate && !endDate) return undefined;
+  if (startDate && endDate) {
+    return {
+      and: [
+        { property: "날짜", date: { on_or_after: startDate } },
+        { property: "날짜", date: { on_or_before: endDate } },
+      ],
+    } as unknown as DBFilter;
+  }
+  if (startDate) {
+    return { property: "날짜", date: { on_or_after: startDate } } as unknown as DBFilter;
+  }
+  return { property: "날짜", date: { on_or_before: endDate } } as unknown as DBFilter;
+}
 
 // ─── Transactions ────────────────────────────────────────────────────────────
 
@@ -61,15 +68,13 @@ export async function getTransactions(
       ) as TransactionCategory,
       amount: (props["금액"]?.number as number) ?? 0,
       description:
-        (
-          (props["내용"]?.title as Array<{ plain_text: string }>)?.[0]?.plain_text
-        ) ?? "",
+        (props["내용"]?.title as Array<{ plain_text: string }>)?.[0]
+          ?.plain_text ?? "",
       platform: (props["플랫폼"]?.select as Record<string, string>)
         ?.name as Platform,
       memo:
-        (
-          (props["메모"]?.rich_text as Array<{ plain_text: string }>)?.[0]?.plain_text
-        ) ?? "",
+        (props["메모"]?.rich_text as Array<{ plain_text: string }>)?.[0]
+          ?.plain_text ?? "",
       createdAt: p.created_time,
     };
   });
@@ -103,9 +108,7 @@ export async function updateTransaction(
   const properties: PageProperties = {};
 
   if (data.description !== undefined)
-    properties["내용"] = {
-      title: [{ text: { content: data.description } }],
-    };
+    properties["내용"] = { title: [{ text: { content: data.description } }] };
   if (data.date !== undefined)
     properties["날짜"] = { date: { start: data.date } };
   if (data.type !== undefined)
@@ -114,13 +117,12 @@ export async function updateTransaction(
     };
   if (data.category !== undefined)
     properties["카테고리"] = { select: { name: data.category } };
-  if (data.amount !== undefined) properties["금액"] = { number: data.amount };
+  if (data.amount !== undefined)
+    properties["금액"] = { number: data.amount };
   if (data.platform !== undefined)
     properties["플랫폼"] = { select: { name: data.platform } };
   if (data.memo !== undefined)
-    properties["메모"] = {
-      rich_text: [{ text: { content: data.memo } }],
-    };
+    properties["메모"] = { rich_text: [{ text: { content: data.memo } }] };
 
   await notion.pages.update({ page_id: id, properties });
 }
@@ -165,9 +167,8 @@ export async function getPlatformSales(
       fee,
       netAmount: salesAmount - returnAmount - fee,
       memo:
-        (
-          (props["메모"]?.rich_text as Array<{ plain_text: string }>)?.[0]?.plain_text
-        ) ?? "",
+        (props["메모"]?.rich_text as Array<{ plain_text: string }>)?.[0]
+          ?.plain_text ?? "",
       createdAt: p.created_time,
     };
   });
@@ -212,11 +213,10 @@ export async function updatePlatformSale(
     properties["주문수"] = { number: data.orderCount };
   if (data.returnAmount !== undefined)
     properties["반품금액"] = { number: data.returnAmount };
-  if (data.fee !== undefined) properties["수수료"] = { number: data.fee };
+  if (data.fee !== undefined)
+    properties["수수료"] = { number: data.fee };
   if (data.memo !== undefined)
-    properties["메모"] = {
-      rich_text: [{ text: { content: data.memo } }],
-    };
+    properties["메모"] = { rich_text: [{ text: { content: data.memo } }] };
 
   await notion.pages.update({ page_id: id, properties });
 }
