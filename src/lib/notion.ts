@@ -1,11 +1,29 @@
 import { Client } from "@notionhq/client";
 import type {
+  QueryDatabaseParameters,
+  UpdatePageParameters,
+} from "@notionhq/client/build/src/api-endpoints";
+
+type PageProperties = NonNullable<UpdatePageParameters["properties"]>;
+import type {
   Transaction,
   PlatformSale,
   TransactionType,
   TransactionCategory,
   Platform,
 } from "@/types";
+
+type DBFilter = NonNullable<QueryDatabaseParameters["filter"]>;
+
+function buildDateFilter(startDate?: string, endDate?: string): DBFilter | undefined {
+  if (!startDate && !endDate) return undefined;
+  const conditions = [
+    ...(startDate ? [{ property: "날짜", date: { on_or_after: startDate } }] : []),
+    ...(endDate ? [{ property: "날짜", date: { on_or_before: endDate } }] : []),
+  ];
+  if (conditions.length === 1) return conditions[0] as DBFilter;
+  return { and: conditions } as DBFilter;
+}
 
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 
@@ -18,18 +36,9 @@ export async function getTransactions(
   startDate?: string,
   endDate?: string
 ): Promise<Transaction[]> {
-  const filter: Record<string, unknown>[] = [];
-
-  if (startDate) {
-    filter.push({ property: "날짜", date: { on_or_after: startDate } });
-  }
-  if (endDate) {
-    filter.push({ property: "날짜", date: { on_or_before: endDate } });
-  }
-
   const response = await notion.databases.query({
     database_id: TRANSACTIONS_DB_ID,
-    filter: filter.length > 0 ? { and: filter } : undefined,
+    filter: buildDateFilter(startDate, endDate),
     sorts: [{ property: "날짜", direction: "descending" }],
   });
 
@@ -53,13 +62,13 @@ export async function getTransactions(
       amount: (props["금액"]?.number as number) ?? 0,
       description:
         (
-          (props["내용"]?.title as Array<Record<string, Record<string, string>>>)?.[0]?.plain_text
+          (props["내용"]?.title as Array<{ plain_text: string }>)?.[0]?.plain_text
         ) ?? "",
       platform: (props["플랫폼"]?.select as Record<string, string>)
         ?.name as Platform,
       memo:
         (
-          (props["메모"]?.rich_text as Array<Record<string, Record<string, string>>>)?.[0]?.plain_text
+          (props["메모"]?.rich_text as Array<{ plain_text: string }>)?.[0]?.plain_text
         ) ?? "",
       createdAt: p.created_time,
     };
@@ -91,7 +100,7 @@ export async function updateTransaction(
   id: string,
   data: Partial<Omit<Transaction, "id" | "createdAt">>
 ): Promise<void> {
-  const properties: Record<string, unknown> = {};
+  const properties: PageProperties = {};
 
   if (data.description !== undefined)
     properties["내용"] = {
@@ -126,16 +135,9 @@ export async function getPlatformSales(
   startDate?: string,
   endDate?: string
 ): Promise<PlatformSale[]> {
-  const filter: Record<string, unknown>[] = [];
-
-  if (startDate)
-    filter.push({ property: "날짜", date: { on_or_after: startDate } });
-  if (endDate)
-    filter.push({ property: "날짜", date: { on_or_before: endDate } });
-
   const response = await notion.databases.query({
     database_id: PLATFORM_SALES_DB_ID,
-    filter: filter.length > 0 ? { and: filter } : undefined,
+    filter: buildDateFilter(startDate, endDate),
     sorts: [{ property: "날짜", direction: "descending" }],
   });
 
@@ -164,7 +166,7 @@ export async function getPlatformSales(
       netAmount: salesAmount - returnAmount - fee,
       memo:
         (
-          (props["메모"]?.rich_text as Array<Record<string, Record<string, string>>>)?.[0]?.plain_text
+          (props["메모"]?.rich_text as Array<{ plain_text: string }>)?.[0]?.plain_text
         ) ?? "",
       createdAt: p.created_time,
     };
@@ -198,7 +200,7 @@ export async function updatePlatformSale(
   id: string,
   data: Partial<Omit<PlatformSale, "id" | "createdAt" | "netAmount">>
 ): Promise<void> {
-  const properties: Record<string, unknown> = {};
+  const properties: PageProperties = {};
 
   if (data.platform !== undefined)
     properties["플랫폼"] = { select: { name: data.platform } };
