@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { format, startOfMonth, endOfMonth, subMonths, addMonths, getYear, setMonth, setYear } from "date-fns";
+import { format, startOfMonth, endOfMonth, getYear, setMonth, setYear, parseISO } from "date-fns";
 import { ChevronLeft, ChevronRight, Plus, Search, Calendar, Settings, X } from "lucide-react";
 import Link from "next/link";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
@@ -28,6 +28,29 @@ const CATEGORY_COLORS: Record<string, string> = {
 const MONTHS_KO = ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"];
 const MONTHS_EN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
+function ExpenseItem({ tx, todayStr, t }: { tx: Transaction; todayStr: string; t: ReturnType<typeof useLanguage>["t"] }) {
+  const isToday = tx.date === todayStr;
+  const dateLabel = isToday
+    ? t.home.today
+    : format(parseISO(tx.date), "MMM d");
+
+  return (
+    <div className="bg-white rounded-2xl px-4 py-3 flex items-center gap-3 mb-2 shadow-sm">
+      <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-lg flex-shrink-0 ${CATEGORY_COLORS[tx.category] ?? "bg-orange-100"}`}>
+        {CATEGORY_ICONS[tx.category] ?? "📌"}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-[#1C1C1E] truncate">{t.categories[tx.category] ?? tx.category}</p>
+        <p className="text-xs text-[#8E8E93] truncate">{tx.memo ?? dateLabel}</p>
+      </div>
+      <div className="text-right flex-shrink-0">
+        <p className="text-sm font-bold text-[#1C1C1E]">{formatCurrency(tx.amount)}</p>
+        <p className="text-xs text-[#8E8E93]">{dateLabel}</p>
+      </div>
+    </div>
+  );
+}
+
 export default function HomePage() {
   const { t, lang } = useLanguage();
   const [currentMonth, setCurrentMonth] = useState(new Date());
@@ -44,6 +67,7 @@ export default function HomePage() {
 
   const startDate = format(startOfMonth(currentMonth), "yyyy-MM-dd");
   const endDate = format(endOfMonth(currentMonth), "yyyy-MM-dd");
+  const todayStr = format(new Date(), "yyyy-MM-dd");
 
   const fetchStats = useCallback(async () => {
     setLoading(true);
@@ -57,7 +81,6 @@ export default function HomePage() {
 
   useEffect(() => { fetchStats(); }, [fetchStats]);
 
-  // 검색 시 전체 트랜잭션 로드
   useEffect(() => {
     if (!showSearch) return;
     fetch(`/api/transactions?startDate=${startDate}&endDate=${endDate}`)
@@ -67,7 +90,6 @@ export default function HomePage() {
     setTimeout(() => searchInputRef.current?.focus(), 100);
   }, [showSearch, startDate, endDate]);
 
-  // 검색 필터링
   useEffect(() => {
     if (!searchQuery.trim()) { setSearchResults(allTx); return; }
     const q = searchQuery.toLowerCase();
@@ -95,79 +117,81 @@ export default function HomePage() {
   const savingsRate = income > 0 ? Math.round((net / income) * 100) : 0;
   const expenseRatio = income > 0 ? Math.min((expense / income) * 100, 100) : 0;
   const maxExp = stats?.maxExpense;
+  const expTx = stats?.expenseTransactions ?? [];
+  const scheduled = expTx.filter(tx => tx.date > todayStr);
+  const paid = expTx.filter(tx => tx.date <= todayStr);
   const MONTHS = lang === "ko" ? MONTHS_KO : MONTHS_EN;
 
   return (
     <div className="page-content">
-      {/* ── Header ── */}
-      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-[#E5E5EA]">
-        <div className="px-4 py-3 flex items-center justify-between">
-          {/* 좌: 월 탐색 */}
-          <div className="flex items-center gap-1">
-            <button onClick={() => setCurrentMonth(m => subMonths(m, 1))} className="p-1 text-[#8E8E93] active:bg-[#F2F2F7] rounded-lg">
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <h1 className="text-xl font-bold text-[#1C1C1E] tabular-nums min-w-[70px] text-center">
-              {format(currentMonth, t.home.dateFormat)}
-            </h1>
-            <button onClick={() => setCurrentMonth(m => addMonths(m, 1))} className="p-1 text-[#8E8E93] active:bg-[#F2F2F7] rounded-lg">
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* 우: 아이콘 */}
-          <div className="flex items-center gap-1">
-            <button onClick={() => { setShowSearch(true); setSearchQuery(""); }} className="p-2 text-[#8E8E93] active:bg-[#F2F2F7] rounded-xl">
-              <Search className="w-5 h-5" />
-            </button>
-            <button onClick={() => { setCalYear(getYear(currentMonth)); setShowCalendar(true); }} className="p-2 text-[#8E8E93] active:bg-[#F2F2F7] rounded-xl">
-              <Calendar className="w-5 h-5" />
-            </button>
-            <Link href="/settings" className="p-2 text-[#8E8E93] active:bg-[#F2F2F7] rounded-xl">
-              <Settings className="w-5 h-5" />
-            </Link>
-          </div>
+      {/* ── 아이콘만 있는 미니 헤더 ── */}
+      <header className="sticky top-0 z-30 bg-[#F2F2F7]">
+        <div className="flex justify-end items-center gap-0.5 px-3 py-2 max-w-lg mx-auto">
+          <button
+            onClick={() => { setShowSearch(true); setSearchQuery(""); }}
+            className="p-2 text-[#8E8E93] active:bg-[#E5E5EA] rounded-xl"
+          >
+            <Search className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => { setCalYear(getYear(currentMonth)); setShowCalendar(true); }}
+            className="p-2 text-[#8E8E93] active:bg-[#E5E5EA] rounded-xl"
+          >
+            <Calendar className="w-5 h-5" />
+          </button>
+          <Link href="/settings" className="p-2 text-[#8E8E93] active:bg-[#E5E5EA] rounded-xl">
+            <Settings className="w-5 h-5" />
+          </Link>
         </div>
       </header>
 
       {loading ? (
         <LoadingSpinner size="lg" />
       ) : (
-        <div className="px-4 pt-4 space-y-3">
-          {/* 수입/지출 요약 카드 */}
-          <div className="card">
-            <p className="text-xs font-medium text-[#8E8E93] mb-3">{t.home.incomeExpense}</p>
-            <div className="flex justify-between items-end mb-3">
+        <div className="px-4 pb-6">
+          {/* ── 날짜 (배경 위에 직접) ── */}
+          <h1 className="text-[40px] font-black text-[#1C1C1E] leading-tight mb-4">
+            {format(currentMonth, t.home.dateFormat)}
+          </h1>
+
+          {/* ── Income / Expense 카드 ── */}
+          <div className="bg-white rounded-2xl px-5 py-4 shadow-sm mb-3">
+            <p className="text-xs text-[#8E8E93] mb-3">{t.home.incomeExpense}</p>
+            <div className="flex justify-between items-start mb-3">
               <div>
-                <p className="text-xs text-[#8E8E93]">{t.home.income}</p>
+                <p className="text-[11px] font-medium text-rose-400 mb-0.5">{t.home.income}</p>
                 <p className="text-2xl font-bold text-[#1C1C1E]">{formatCurrency(income)}</p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-[#8E8E93]">{t.home.expense}</p>
-                <p className="text-xl font-semibold text-[#FF3B30]">{formatCurrency(expense)}</p>
+                <p className="text-[11px] font-medium text-rose-400 mb-0.5">{t.home.expense}</p>
+                <p className="text-2xl font-bold text-[#1C1C1E]">{formatCurrency(expense)}</p>
               </div>
             </div>
-            <div className="w-full bg-[#F2F2F7] rounded-full h-2 mb-3">
-              <div className="h-2 rounded-full bg-[#FF3B30] transition-all" style={{ width: `${expenseRatio}%` }} />
+            {/* 진행 바 */}
+            <div className="w-full bg-[#F2F2F7] rounded-full h-1.5 mb-3">
+              <div
+                className="h-1.5 rounded-full bg-[#FF3B30] transition-all"
+                style={{ width: `${expenseRatio}%` }}
+              />
             </div>
             <div className="flex justify-between text-xs">
               <div>
                 <p className="text-[#8E8E93]">{t.home.balance}</p>
-                <p className={`font-semibold ${net >= 0 ? "text-[#34C759]" : "text-[#FF3B30]"}`}>
+                <p className={`font-semibold text-sm mt-0.5 ${net >= 0 ? "text-[#34C759]" : "text-[#FF3B30]"}`}>
                   {net >= 0 ? "+" : ""}{formatCurrency(net)}
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-[#8E8E93]">{t.home.savingRate}</p>
-                <p className={`font-semibold ${savingsRate >= 0 ? "text-[#007AFF]" : "text-[#FF3B30]"}`}>{savingsRate}%</p>
+                <p className="font-semibold text-sm mt-0.5 text-[#1C1C1E]">{savingsRate}%</p>
               </div>
             </div>
           </div>
 
-          {/* Max expense */}
+          {/* ── Max expense 카드 ── */}
           {maxExp && (
-            <div className="card">
-              <p className="text-xs font-medium text-[#8E8E93] mb-3">{t.home.maxExpense}</p>
+            <div className="bg-white rounded-2xl px-5 py-4 shadow-sm mb-4">
+              <p className="text-xs text-[#8E8E93] mb-3">{t.home.maxExpense}</p>
               <div className="flex items-center gap-3">
                 <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl flex-shrink-0 ${CATEGORY_COLORS[maxExp.category] ?? "bg-orange-100"}`}>
                   {CATEGORY_ICONS[maxExp.category] ?? "📌"}
@@ -176,88 +200,51 @@ export default function HomePage() {
                   <p className="text-sm font-semibold text-[#1C1C1E]">{t.categories[maxExp.category] ?? maxExp.category}</p>
                   {maxExp.memo && <p className="text-xs text-[#8E8E93] truncate">{maxExp.memo}</p>}
                 </div>
-                <p className="text-lg font-bold text-[#FF3B30] flex-shrink-0">{formatCurrency(maxExp.amount)}</p>
+                <p className="text-base font-bold text-[#1C1C1E] flex-shrink-0">{formatCurrency(maxExp.amount)}</p>
               </div>
             </div>
           )}
 
-          {/* 플랫폼 매출 Top */}
-          {(stats?.platformSales?.length ?? 0) > 0 && (
-            <div className="card">
-              <p className="text-xs font-medium text-[#8E8E93] mb-3">{t.home.topPlatform}</p>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-xl">🏪</div>
-                  <div>
-                    <p className="text-sm font-semibold text-[#1C1C1E]">{stats!.platformSales[0].platform}</p>
-                    <p className="text-xs text-[#8E8E93]">{stats!.platformSales[0].orderCount}{t.home.orders}</p>
-                  </div>
+          {/* ── Fixed expenses ── */}
+          {expTx.length > 0 && (
+            <div>
+              <p className="text-sm font-semibold text-[#1C1C1E] mb-3">{t.home.fixedExpenses}</p>
+
+              {/* Scheduled */}
+              {scheduled.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-xs text-[#8E8E93] mb-2">
+                    {t.home.scheduled} {scheduled.length}
+                  </p>
+                  {scheduled.map(tx => (
+                    <ExpenseItem key={tx.id} tx={tx} todayStr={todayStr} t={t} />
+                  ))}
                 </div>
-                <p className="text-base font-bold text-[#1C1C1E]">{formatCurrency(stats!.platformSales[0].salesAmount)}</p>
-              </div>
+              )}
+
+              {/* Paid */}
+              {paid.length > 0 && (
+                <div>
+                  <p className="text-xs text-[#8E8E93] mb-2">
+                    {t.home.paid} {paid.length}
+                  </p>
+                  {paid.map(tx => (
+                    <ExpenseItem key={tx.id} tx={tx} todayStr={todayStr} t={t} />
+                  ))}
+                </div>
+              )}
             </div>
           )}
-
-          {/* 카테고리별 지출 */}
-          {(stats?.categoryExpenses?.length ?? 0) > 0 && (
-            <div className="card">
-              <p className="text-xs font-medium text-[#8E8E93] mb-3">{t.home.categoryExpense}</p>
-              <div className="space-y-3">
-                {stats!.categoryExpenses.slice(0, 5).map((item) => (
-                  <div key={item.category} className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0 ${CATEGORY_COLORS[item.category] ?? "bg-gray-100"}`}>
-                      {CATEGORY_ICONS[item.category] ?? "📌"}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="text-[#1C1C1E] font-medium truncate">{t.categories[item.category] ?? item.category}</span>
-                        <span className="text-[#1C1C1E] font-semibold ml-2 flex-shrink-0">{formatCurrency(item.amount)}</span>
-                      </div>
-                      <div className="w-full bg-[#F2F2F7] rounded-full h-1">
-                        <div className="h-1 rounded-full bg-[#007AFF]" style={{ width: `${Math.min(item.percentage, 100)}%` }} />
-                      </div>
-                      <p className="text-right text-xs text-[#8E8E93] mt-0.5">{item.percentage.toFixed(0)}%</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* 최근 거래 */}
-          <div className="card">
-            <p className="text-xs font-medium text-[#8E8E93] mb-3">{t.home.recentTx}</p>
-            {(stats?.recentTransactions?.length ?? 0) === 0 ? (
-              <p className="text-sm text-[#8E8E93] text-center py-4">{t.home.noTx}</p>
-            ) : (
-              <div className="space-y-3">
-                {stats!.recentTransactions.slice(0, 5).map((tx) => (
-                  <div key={tx.id} className="flex items-center gap-3">
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0 ${CATEGORY_COLORS[tx.category] ?? "bg-gray-100"}`}>
-                      {CATEGORY_ICONS[tx.category] ?? (tx.type === "income" ? "💰" : "📌")}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[#1C1C1E] truncate">{t.categories[tx.category] ?? tx.category}</p>
-                      <p className="text-xs text-[#8E8E93]">{tx.date}{tx.platform ? ` · ${tx.platform}` : ""}</p>
-                    </div>
-                    <span className={`text-sm font-semibold flex-shrink-0 ${tx.type === "income" ? "text-[#34C759]" : "text-[#FF3B30]"}`}>
-                      {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
 
           {!stats && !loading && (
-            <div className="card text-center py-8">
+            <div className="bg-white rounded-2xl px-5 py-8 text-center shadow-sm">
               <p className="text-[#8E8E93] text-sm">{t.home.notionError}</p>
             </div>
           )}
         </div>
       )}
 
-      {/* 플로팅 + 버튼 */}
+      {/* ── 플로팅 + 버튼 ── */}
       <button
         onClick={() => setShowAddModal(true)}
         className="fixed bottom-20 right-4 w-14 h-14 bg-[#007AFF] rounded-full shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform"
@@ -275,7 +262,6 @@ export default function HomePage() {
       {/* ── 검색 오버레이 ── */}
       {showSearch && (
         <div className="fixed inset-0 z-50 bg-[#F2F2F7] flex flex-col max-w-lg mx-auto">
-          {/* 검색 헤더 */}
           <div className="bg-white/90 backdrop-blur-xl border-b border-[#E5E5EA] px-4 py-3 flex items-center gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8E8E93]" />
@@ -292,28 +278,15 @@ export default function HomePage() {
               <X className="w-5 h-5" />
             </button>
           </div>
-
-          {/* 검색 결과 */}
           <div className="flex-1 overflow-y-auto px-4 pt-3 pb-8">
             {searchResults.length === 0 ? (
               <div className="text-center py-16">
                 <p className="text-[#8E8E93] text-sm">{searchQuery ? t.home.noResults : t.transactions.noData}</p>
               </div>
             ) : (
-              <div className="card p-0 overflow-hidden divide-y divide-[#F2F2F7]">
-                {searchResults.map((tx) => (
-                  <div key={tx.id} className="flex items-center gap-3 px-4 py-3">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${CATEGORY_COLORS[tx.category] ?? "bg-blue-50"}`}>
-                      {CATEGORY_ICONS[tx.category] ?? (tx.type === "income" ? "💰" : "📌")}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[#1C1C1E] truncate">{t.categories[tx.category] ?? tx.category}</p>
-                      <p className="text-xs text-[#8E8E93]">{tx.date}{tx.memo ? ` · ${tx.memo}` : ""}</p>
-                    </div>
-                    <span className={`text-sm font-bold flex-shrink-0 ${tx.type === "income" ? "text-[#34C759]" : "text-[#FF3B30]"}`}>
-                      {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
-                    </span>
-                  </div>
+              <div className="space-y-2">
+                {searchResults.map(tx => (
+                  <ExpenseItem key={tx.id} tx={tx} todayStr={todayStr} t={t} />
                 ))}
               </div>
             )}
@@ -324,19 +297,18 @@ export default function HomePage() {
       {/* ── 달력 월 선택 ── */}
       {showCalendar && (
         <div className="fixed inset-0 z-50 flex items-end justify-center max-w-lg mx-auto" onClick={() => setShowCalendar(false)}>
-          <div className="w-full bg-white rounded-t-3xl shadow-2xl p-5 pb-8" onClick={(e) => e.stopPropagation()}>
-            {/* 드래그 핸들 */}
+          <div className="w-full bg-white rounded-t-3xl shadow-2xl p-5 pb-8" onClick={e => e.stopPropagation()}>
             <div className="w-10 h-1 bg-[#E5E5EA] rounded-full mx-auto mb-4" />
             <p className="text-sm font-semibold text-[#1C1C1E] mb-4">{t.home.selectMonth}</p>
-
-            {/* 연도 선택 */}
             <div className="flex items-center justify-between mb-4">
-              <button onClick={() => setCalYear(y => y - 1)} className="p-2 text-[#8E8E93]"><ChevronLeft className="w-4 h-4" /></button>
+              <button onClick={() => setCalYear(y => y - 1)} className="p-2 text-[#8E8E93]">
+                <ChevronLeft className="w-4 h-4" />
+              </button>
               <span className="text-base font-bold text-[#1C1C1E]">{calYear}</span>
-              <button onClick={() => setCalYear(y => y + 1)} className="p-2 text-[#8E8E93]"><ChevronRight className="w-4 h-4" /></button>
+              <button onClick={() => setCalYear(y => y + 1)} className="p-2 text-[#8E8E93]">
+                <ChevronRight className="w-4 h-4" />
+              </button>
             </div>
-
-            {/* 월 그리드 */}
             <div className="grid grid-cols-4 gap-2">
               {MONTHS.map((name, idx) => {
                 const isSelected = getYear(currentMonth) === calYear && currentMonth.getMonth() === idx;

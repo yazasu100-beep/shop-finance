@@ -28,6 +28,10 @@ export const translations = {
       searchPlaceholder: "카테고리, 메모, 금액 검색...",
       noResults: "검색 결과 없음",
       selectMonth: "월 선택",
+      fixedExpenses: "고정 지출",
+      scheduled: "예정",
+      paid: "지불됨",
+      today: "오늘",
     },
     transactions: {
       title: "거래 내역",
@@ -157,6 +161,10 @@ export const translations = {
       searchPlaceholder: "Search category, memo, amount...",
       noResults: "No results found",
       selectMonth: "Select Month",
+      fixedExpenses: "Fixed expenses",
+      scheduled: "Scheduled",
+      paid: "Paid",
+      today: "Today",
     },
     transactions: {
       title: "Transactions",

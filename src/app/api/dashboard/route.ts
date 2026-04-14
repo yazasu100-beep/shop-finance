@@ -92,6 +92,7 @@ export async function GET(request: NextRequest) {
       categoryExpenses,
       recentTransactions: transactions.slice(0, 10),
       maxExpense,
+      expenseTransactions: transactions.filter((t) => t.type === "expense"),
     };
 
     return NextResponse.json(stats);

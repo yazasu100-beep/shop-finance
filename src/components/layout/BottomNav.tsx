@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, ArrowLeftRight, ShoppingCart, BarChart3 } from "lucide-react";
+import { Home, ArrowLeftRight, BarChart3 } from "lucide-react";
 import clsx from "clsx";
 import { useLanguage } from "@/context/LanguageContext";
 
@@ -13,7 +13,6 @@ export default function BottomNav() {
   const navItems = [
     { href: "/", label: t.nav.home, icon: Home },
     { href: "/transactions", label: t.nav.transactions, icon: ArrowLeftRight },
-    { href: "/platforms", label: t.nav.platforms, icon: ShoppingCart },
     { href: "/reports", label: t.nav.insights, icon: BarChart3 },
   ];
 
@@ -26,7 +25,7 @@ export default function BottomNav() {
             <Link
               key={href}
               href={href}
-              className="flex flex-col items-center gap-0.5 px-4 py-1 min-w-[60px]"
+              className="flex flex-col items-center gap-0.5 px-6 py-1 min-w-[70px]"
             >
               <Icon className={clsx("w-6 h-6 transition-colors", active ? "text-[#007AFF]" : "text-[#8E8E93]")} />
               <span className={clsx("text-[10px] font-medium transition-colors", active ? "text-[#007AFF]" : "text-[#8E8E93]")}>
