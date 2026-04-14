@@ -88,7 +88,7 @@ export async function createTransaction(
   const response = await notion.pages.create({
     parent: { database_id: TRANSACTIONS_DB_ID },
     properties: {
-      내용: { title: [{ text: { content: data.description } }] },
+      내용: { title: [{ text: { content: data.description ?? data.category } }] },
       날짜: { date: { start: data.date } },
       유형: { select: { name: data.type === "income" ? "수입" : "지출" } },
       카테고리: { select: { name: data.category } },
