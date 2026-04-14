@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { Transaction, TransactionType, TransactionCategory, Platform } from "@/types";
 import { format } from "date-fns";
 import clsx from "clsx";
+import { useLanguage } from "@/context/LanguageContext";
 
 const INCOME_CATEGORIES: TransactionCategory[] = ["상품판매", "환불수입", "기타수입"];
 const EXPENSE_CATEGORIES: TransactionCategory[] = [
@@ -18,6 +19,7 @@ interface TransactionFormProps {
 }
 
 export default function TransactionForm({ initial, onSubmit, onCancel }: TransactionFormProps) {
+  const { t } = useLanguage();
   const [type, setType] = useState<TransactionType>(initial?.type ?? "expense");
   const [category, setCategory] = useState<TransactionCategory>(
     initial?.category ?? "기타지출"
@@ -60,32 +62,32 @@ export default function TransactionForm({ initial, onSubmit, onCancel }: Transac
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* 유형 */}
       <div className="flex gap-2">
-        {(["income", "expense"] as TransactionType[]).map((t) => (
+        {(["income", "expense"] as TransactionType[]).map((tp) => (
           <button
-            key={t}
+            key={tp}
             type="button"
-            onClick={() => handleTypeChange(t)}
+            onClick={() => handleTypeChange(tp)}
             className={clsx(
               "flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors",
-              type === t
-                ? t === "income" ? "bg-[#34C759] text-white" : "bg-[#FF3B30] text-white"
+              type === tp
+                ? tp === "income" ? "bg-[#34C759] text-white" : "bg-[#FF3B30] text-white"
                 : "bg-[#F2F2F7] text-[#8E8E93]"
             )}
           >
-            {t === "income" ? "수입" : "지출"}
+            {tp === "income" ? t.form.incomeLabel : t.form.expenseLabel}
           </button>
         ))}
       </div>
 
       {/* 날짜 */}
       <div>
-        <label className="label">날짜</label>
+        <label className="label">{t.form.date}</label>
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="input" required />
       </div>
 
       {/* 카테고리 */}
       <div>
-        <label className="label">카테고리</label>
+        <label className="label">{t.form.category}</label>
         <div className="grid grid-cols-3 gap-1.5">
           {categories.map((c) => (
             <button
@@ -97,7 +99,7 @@ export default function TransactionForm({ initial, onSubmit, onCancel }: Transac
                 category === c ? "bg-[#007AFF] text-white" : "bg-[#F2F2F7] text-[#8E8E93]"
               )}
             >
-              {c}
+              {t.categories[c] ?? c}
             </button>
           ))}
         </div>
@@ -105,7 +107,7 @@ export default function TransactionForm({ initial, onSubmit, onCancel }: Transac
 
       {/* 금액 */}
       <div>
-        <label className="label">금액 (원)</label>
+        <label className="label">{t.form.amount}</label>
         <input
           type="text"
           inputMode="numeric"
@@ -119,12 +121,12 @@ export default function TransactionForm({ initial, onSubmit, onCancel }: Transac
 
       {/* 내용 */}
       <div>
-        <label className="label">내용</label>
+        <label className="label">{t.form.description}</label>
         <input
           type="text"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          placeholder="거래 내용을 입력하세요"
+          placeholder={t.form.descPlaceholder}
           className="input"
           required
         />
@@ -132,23 +134,23 @@ export default function TransactionForm({ initial, onSubmit, onCancel }: Transac
 
       {/* 플랫폼 */}
       <div>
-        <label className="label">플랫폼 (선택)</label>
+        <label className="label">{t.form.platform}</label>
         <select value={platform} onChange={(e) => setPlatform(e.target.value as Platform | "")} className="input">
-          <option value="">선택 안 함</option>
+          <option value="">{t.form.none}</option>
           {PLATFORMS.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
       </div>
 
       {/* 메모 */}
       <div>
-        <label className="label">메모 (선택)</label>
-        <textarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="추가 메모" className="input resize-none" rows={2} />
+        <label className="label">{t.form.memo}</label>
+        <textarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder={t.form.memoPlaceholder} className="input resize-none" rows={2} />
       </div>
 
       <div className="flex gap-2 pt-1">
-        <button type="button" onClick={onCancel} className="btn-secondary flex-1" disabled={loading}>취소</button>
+        <button type="button" onClick={onCancel} className="btn-secondary flex-1" disabled={loading}>{t.form.cancel}</button>
         <button type="submit" className="btn-primary flex-1" disabled={loading}>
-          {loading ? "저장 중..." : "저장"}
+          {loading ? t.form.saving : t.form.save}
         </button>
       </div>
     </form>

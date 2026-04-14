@@ -7,8 +7,10 @@ import {
 } from "recharts";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import type { DashboardStats } from "@/types";
+import { useLanguage } from "@/context/LanguageContext";
 
 export default function ReportsPage() {
+  const { t } = useLanguage();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<3 | 6 | 12>(6);
@@ -33,7 +35,7 @@ export default function ReportsPage() {
       {/* Header */}
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-[#E5E5EA]">
         <div className="px-4 py-3 flex items-center justify-between">
-          <h1 className="text-base font-bold text-[#1C1C1E]">인사이트</h1>
+          <h1 className="text-base font-bold text-[#1C1C1E]">{t.reports.title}</h1>
           {/* 기간 선택 */}
           <div className="flex gap-1 bg-[#F2F2F7] rounded-xl p-0.5">
             {([3, 6, 12] as const).map((m) => (
@@ -57,23 +59,23 @@ export default function ReportsPage() {
         <div className="px-4 pt-4 space-y-3">
           {/* Summary 카드 */}
           <div className="card">
-            <p className="text-xs font-medium text-[#8E8E93] mb-3">Summary</p>
+            <p className="text-xs font-medium text-[#8E8E93] mb-3">{t.reports.summary}</p>
             <div className="flex justify-between mb-4">
               <div>
-                <p className="text-xs text-[#8E8E93]">Total Income</p>
+                <p className="text-xs text-[#8E8E93]">{t.reports.totalIncome}</p>
                 <p className="text-xl font-bold text-[#1C1C1E]">
                   {(stats?.totalIncome ?? 0).toLocaleString()}원
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-[#8E8E93]">Total Expense</p>
+                <p className="text-xs text-[#8E8E93]">{t.reports.totalExpense}</p>
                 <p className="text-xl font-bold text-[#FF3B30]">
                   {(stats?.totalExpense ?? 0).toLocaleString()}원
                 </p>
               </div>
             </div>
             <div className="border-t border-[#F2F2F7] pt-3 flex justify-between items-center">
-              <p className="text-sm text-[#8E8E93]">Net Change</p>
+              <p className="text-sm text-[#8E8E93]">{t.reports.netChange}</p>
               <p className={`text-lg font-bold ${net >= 0 ? "text-[#34C759]" : "text-[#FF3B30]"}`}>
                 {net >= 0 ? "+" : ""}{net.toLocaleString()}원
               </p>
@@ -82,13 +84,13 @@ export default function ReportsPage() {
 
           {/* Monthly Average 카드 */}
           <div className="card">
-            <p className="text-xs font-medium text-[#8E8E93] mb-3">Monthly Average</p>
+            <p className="text-xs font-medium text-[#8E8E93] mb-3">{t.reports.monthlyAvg}</p>
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: "Avg. Income", value: `${avgIncome.toLocaleString()}원`, color: "text-[#1C1C1E]" },
-                { label: "Avg. Expense", value: `${avgExpense.toLocaleString()}원`, color: "text-[#FF3B30]" },
-                { label: "Avg. Saving", value: `${avgSaving.toLocaleString()}원`, color: "text-[#34C759]" },
-                { label: "Saving Rate", value: `${savingRate}%`, color: "text-[#007AFF]" },
+                { label: t.reports.avgIncome, value: `${avgIncome.toLocaleString()}원`, color: "text-[#1C1C1E]" },
+                { label: t.reports.avgExpense, value: `${avgExpense.toLocaleString()}원`, color: "text-[#FF3B30]" },
+                { label: t.reports.avgSaving, value: `${avgSaving.toLocaleString()}원`, color: "text-[#34C759]" },
+                { label: t.reports.savingRate, value: `${savingRate}%`, color: "text-[#007AFF]" },
               ].map((item) => (
                 <div key={item.label}>
                   <p className="text-xs text-[#8E8E93]">{item.label}</p>
@@ -97,18 +99,18 @@ export default function ReportsPage() {
               ))}
             </div>
             <p className="text-xs text-[#C7C7CC] mt-3">
-              마진율 {marginRate}% · 현재 월은 집계 완료 후 평균에 반영됩니다.
+              {t.reports.marginNote} {marginRate}% · {t.reports.avgNote}
             </p>
           </div>
 
           {/* Trend 차트 */}
           <div className="card">
             <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-medium text-[#8E8E93]">Trend</p>
+              <p className="text-xs font-medium text-[#8E8E93]">{t.reports.trend}</p>
               <div className="flex gap-3 text-[10px]">
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#34C759] inline-block" />수입</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#FF3B30] inline-block" />지출</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#007AFF] inline-block" />순이익</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#34C759] inline-block" />{t.reports.trendIncome}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#FF3B30] inline-block" />{t.reports.trendExpense}</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#007AFF] inline-block" />{t.reports.trendProfit}</span>
               </div>
             </div>
             <ResponsiveContainer width="100%" height={160}>
@@ -130,7 +132,7 @@ export default function ReportsPage() {
           {/* 플랫폼별 매출 */}
           {(stats?.platformSales?.length ?? 0) > 0 && (
             <div className="card">
-              <p className="text-xs font-medium text-[#8E8E93] mb-3">플랫폼별 매출</p>
+              <p className="text-xs font-medium text-[#8E8E93] mb-3">{t.reports.platformSales}</p>
               <ResponsiveContainer width="100%" height={140}>
                 <BarChart data={stats!.platformSales} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#F2F2F7" />
@@ -140,8 +142,8 @@ export default function ReportsPage() {
                     contentStyle={{ fontSize: 11, borderRadius: 10, border: "none", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
                     formatter={(v: number) => [`${v.toLocaleString()}원`]}
                   />
-                  <Bar dataKey="salesAmount" name="매출" fill="#007AFF" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="netAmount" name="순매출" fill="#34C759" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="salesAmount" name={t.reports.salesLabel} fill="#007AFF" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="netAmount" name={t.reports.netSalesLabel} fill="#34C759" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
 
@@ -150,7 +152,7 @@ export default function ReportsPage() {
                   <div key={p.platform} className="flex items-center justify-between text-xs">
                     <span className="text-[#1C1C1E] font-medium">{p.platform}</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-[#8E8E93]">{p.orderCount}건</span>
+                      <span className="text-[#8E8E93]">{p.orderCount}{t.reports.ordersUnit}</span>
                       <span className="text-[#8E8E93]">{p.percentage.toFixed(1)}%</span>
                       <span className="font-semibold text-[#007AFF]">{p.salesAmount.toLocaleString()}원</span>
                     </div>
@@ -163,7 +165,7 @@ export default function ReportsPage() {
           {/* 카테고리별 지출 */}
           {(stats?.categoryExpenses?.length ?? 0) > 0 && (
             <div className="card">
-              <p className="text-xs font-medium text-[#8E8E93] mb-3">카테고리별 지출</p>
+              <p className="text-xs font-medium text-[#8E8E93] mb-3">{t.reports.categoryExpense}</p>
               <div className="space-y-3">
                 {stats!.categoryExpenses.map((item, i) => {
                   const colors = ["#007AFF", "#34C759", "#FF9500", "#FF3B30", "#AF52DE", "#5AC8FA"];
@@ -171,7 +173,9 @@ export default function ReportsPage() {
                   return (
                     <div key={item.category}>
                       <div className="flex justify-between text-xs mb-1.5">
-                        <span className="text-[#1C1C1E] font-medium">{item.category}</span>
+                        <span className="text-[#1C1C1E] font-medium">
+                          {t.categories[item.category] ?? item.category}
+                        </span>
                         <div className="flex gap-2">
                           <span className="text-[#8E8E93]">{item.percentage.toFixed(1)}%</span>
                           <span className="font-semibold">{item.amount.toLocaleString()}원</span>

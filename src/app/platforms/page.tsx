@@ -9,6 +9,7 @@ import type { PlatformSale, Platform } from "@/types";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Pencil, Trash2 } from "lucide-react";
 import clsx from "clsx";
+import { useLanguage } from "@/context/LanguageContext";
 
 const PLATFORM_COLORS: Record<string, string> = {
   스마트스토어: "bg-green-100 text-green-700",
@@ -27,6 +28,7 @@ const PLATFORM_EMOJI: Record<string, string> = {
 };
 
 export default function PlatformsPage() {
+  const { t } = useLanguage();
   const [sales, setSales] = useState<PlatformSale[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -76,7 +78,7 @@ export default function PlatformsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("삭제하시겠습니까?")) return;
+    if (!confirm(t.platforms.deleteConfirm)) return;
     await fetch(`/api/platforms?id=${id}`, { method: "DELETE" });
     await fetchSales();
   };
@@ -86,7 +88,7 @@ export default function PlatformsPage() {
       {/* Header */}
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-[#E5E5EA]">
         <div className="px-4 py-3">
-          <h1 className="text-base font-bold text-[#1C1C1E] mb-2">플랫폼 매출</h1>
+          <h1 className="text-base font-bold text-[#1C1C1E] mb-2">{t.platforms.title}</h1>
           {/* 플랫폼 탭 */}
           <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-hide">
             <button
@@ -96,7 +98,7 @@ export default function PlatformsPage() {
                 platformFilter === "all" ? "bg-[#007AFF] text-white" : "bg-[#F2F2F7] text-[#8E8E93]"
               )}
             >
-              전체
+              {t.platforms.all}
             </button>
             {platforms.map((p) => (
               <button
@@ -117,9 +119,9 @@ export default function PlatformsPage() {
       {/* 요약 */}
       <div className="px-4 pt-3 grid grid-cols-3 gap-2">
         {[
-          { label: "총 매출", value: `${totalSales.toLocaleString()}원`, color: "text-[#007AFF]" },
-          { label: "주문수", value: `${totalOrders}건`, color: "text-[#1C1C1E]" },
-          { label: "순매출", value: `${totalNet.toLocaleString()}원`, color: totalNet >= 0 ? "text-[#34C759]" : "text-[#FF3B30]" },
+          { label: t.platforms.totalSales, value: `${totalSales.toLocaleString()}원`, color: "text-[#007AFF]" },
+          { label: t.platforms.orders, value: `${totalOrders}${t.platforms.ordersUnit}`, color: "text-[#1C1C1E]" },
+          { label: t.platforms.netSales, value: `${totalNet.toLocaleString()}원`, color: totalNet >= 0 ? "text-[#34C759]" : "text-[#FF3B30]" },
         ].map((item) => (
           <div key={item.label} className="card text-center py-3">
             <p className="text-[10px] text-[#8E8E93] mb-0.5">{item.label}</p>
@@ -134,8 +136,8 @@ export default function PlatformsPage() {
           <LoadingSpinner />
         ) : filtered.length === 0 ? (
           <div className="card text-center py-12">
-            <p className="text-[#8E8E93] text-sm">매출 내역이 없습니다</p>
-            <p className="text-xs text-[#C7C7CC] mt-1">+ 버튼으로 추가하세요</p>
+            <p className="text-[#8E8E93] text-sm">{t.platforms.noData}</p>
+            <p className="text-xs text-[#C7C7CC] mt-1">{t.platforms.addHint}</p>
           </div>
         ) : (
           <div className="card p-0 overflow-hidden divide-y divide-[#F2F2F7]">
@@ -159,27 +161,27 @@ export default function PlatformsPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-[#8E8E93]">매출액</span>
+                    <span className="text-[#8E8E93]">{t.platforms.salesAmount}</span>
                     <span className="font-medium">{s.salesAmount.toLocaleString()}원</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[#8E8E93]">주문수</span>
-                    <span className="font-medium">{s.orderCount}건</span>
+                    <span className="text-[#8E8E93]">{t.platforms.orderCount}</span>
+                    <span className="font-medium">{s.orderCount}{t.platforms.ordersUnit}</span>
                   </div>
                   {s.returnAmount > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-[#8E8E93]">반품</span>
+                      <span className="text-[#8E8E93]">{t.platforms.returns}</span>
                       <span className="text-[#FF3B30] font-medium">-{s.returnAmount.toLocaleString()}원</span>
                     </div>
                   )}
                   {s.fee > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-[#8E8E93]">수수료</span>
+                      <span className="text-[#8E8E93]">{t.platforms.fee}</span>
                       <span className="text-[#FF9500] font-medium">-{s.fee.toLocaleString()}원</span>
                     </div>
                   )}
                   <div className="flex justify-between col-span-2 pt-1 border-t border-[#F2F2F7] mt-1">
-                    <span className="text-[#8E8E93] font-medium">순매출</span>
+                    <span className="text-[#8E8E93] font-medium">{t.platforms.netSales}</span>
                     <span className={clsx("font-bold", s.netAmount >= 0 ? "text-[#34C759]" : "text-[#FF3B30]")}>
                       {s.netAmount.toLocaleString()}원
                     </span>
@@ -200,12 +202,12 @@ export default function PlatformsPage() {
       </button>
 
       {showModal && (
-        <Modal title="플랫폼 매출 추가" onClose={() => setShowModal(false)}>
+        <Modal title={t.platforms.add} onClose={() => setShowModal(false)}>
           <PlatformForm onSubmit={handleCreate} onCancel={() => setShowModal(false)} />
         </Modal>
       )}
       {editTarget && (
-        <Modal title="플랫폼 매출 수정" onClose={() => setEditTarget(null)}>
+        <Modal title={t.platforms.edit} onClose={() => setEditTarget(null)}>
           <PlatformForm initial={editTarget} onSubmit={handleUpdate} onCancel={() => setEditTarget(null)} />
         </Modal>
       )}

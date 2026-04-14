@@ -7,9 +7,9 @@ import Modal from "@/components/ui/Modal";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import type { Transaction, TransactionType } from "@/types";
 import { format, startOfMonth, endOfMonth } from "date-fns";
-import { ko } from "date-fns/locale";
 import { Pencil, Trash2 } from "lucide-react";
 import clsx from "clsx";
+import { useLanguage } from "@/context/LanguageContext";
 
 const CATEGORY_ICONS: Record<string, string> = {
   상품판매: "🛍️", 환불수입: "↩️", 기타수입: "💰",
@@ -26,6 +26,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function TransactionsPage() {
+  const { t } = useLanguage();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [filtered, setFiltered] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,9 +51,9 @@ export default function TransactionsPage() {
 
   useEffect(() => {
     let result = transactions;
-    if (typeFilter !== "all") result = result.filter((t) => t.type === typeFilter);
-    if (search) result = result.filter((t) =>
-      t.description.includes(search) || t.category.includes(search)
+    if (typeFilter !== "all") result = result.filter((tx) => tx.type === typeFilter);
+    if (search) result = result.filter((tx) =>
+      tx.description.includes(search) || tx.category.includes(search)
     );
     setFiltered(result);
   }, [transactions, typeFilter, search]);
@@ -79,20 +80,20 @@ export default function TransactionsPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("삭제하시겠습니까?")) return;
+    if (!confirm(t.transactions.deleteConfirm)) return;
     await fetch(`/api/transactions?id=${id}`, { method: "DELETE" });
     await fetchTransactions();
   };
 
-  const totalIncome = filtered.filter((t) => t.type === "income").reduce((s, t) => s + t.amount, 0);
-  const totalExpense = filtered.filter((t) => t.type === "expense").reduce((s, t) => s + t.amount, 0);
+  const totalIncome = filtered.filter((tx) => tx.type === "income").reduce((s, tx) => s + tx.amount, 0);
+  const totalExpense = filtered.filter((tx) => tx.type === "expense").reduce((s, tx) => s + tx.amount, 0);
 
   return (
     <div className="page-content">
       {/* Header */}
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-[#E5E5EA]">
         <div className="px-4 py-3">
-          <h1 className="text-base font-bold text-[#1C1C1E] mb-2">거래 내역</h1>
+          <h1 className="text-base font-bold text-[#1C1C1E] mb-2">{t.transactions.title}</h1>
           {/* 탭 필터 */}
           <div className="flex gap-1.5 mb-2">
             {(["all", "income", "expense"] as const).map((f) => (
@@ -110,7 +111,7 @@ export default function TransactionsPage() {
                     : "bg-[#F2F2F7] text-[#8E8E93]"
                 )}
               >
-                {f === "all" ? "전체" : f === "income" ? "수입" : "지출"}
+                {f === "all" ? t.transactions.all : f === "income" ? t.transactions.income : t.transactions.expense}
               </button>
             ))}
           </div>
@@ -121,7 +122,7 @@ export default function TransactionsPage() {
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="검색..."
+              placeholder={t.transactions.search}
               className="input pl-9 text-sm py-2"
             />
           </div>
@@ -131,14 +132,14 @@ export default function TransactionsPage() {
       {/* 요약 */}
       <div className="px-4 pt-3 grid grid-cols-3 gap-2">
         {[
-          { label: "수입", value: totalIncome, color: "text-[#34C759]" },
-          { label: "지출", value: totalExpense, color: "text-[#FF3B30]" },
-          { label: "순이익", value: totalIncome - totalExpense, color: totalIncome - totalExpense >= 0 ? "text-[#007AFF]" : "text-[#FF3B30]" },
+          { label: t.transactions.income, value: totalIncome, color: "text-[#34C759]" },
+          { label: t.transactions.expense, value: totalExpense, color: "text-[#FF3B30]" },
+          { label: t.transactions.netProfit, value: totalIncome - totalExpense, color: totalIncome - totalExpense >= 0 ? "text-[#007AFF]" : "text-[#FF3B30]" },
         ].map((item) => (
           <div key={item.label} className="card text-center py-3">
             <p className="text-[10px] text-[#8E8E93] mb-0.5">{item.label}</p>
             <p className={`text-sm font-bold ${item.color}`}>
-              {item.value >= 0 && item.label === "순이익" && item.value > 0 ? "+" : ""}
+              {item.value >= 0 && item.label === t.transactions.netProfit && item.value > 0 ? "+" : ""}
               {item.value.toLocaleString()}원
             </p>
           </div>
@@ -151,40 +152,31 @@ export default function TransactionsPage() {
           <LoadingSpinner />
         ) : filtered.length === 0 ? (
           <div className="card text-center py-12">
-            <p className="text-[#8E8E93] text-sm">거래 내역이 없습니다</p>
-            <p className="text-xs text-[#C7C7CC] mt-1">+ 버튼으로 추가하세요</p>
+            <p className="text-[#8E8E93] text-sm">{t.transactions.noData}</p>
+            <p className="text-xs text-[#C7C7CC] mt-1">{t.transactions.addHint}</p>
           </div>
         ) : (
           <div className="card p-0 overflow-hidden divide-y divide-[#F2F2F7]">
-            {filtered.map((t) => (
-              <div
-                key={t.id}
-                className="flex items-center gap-3 px-4 py-3 active:bg-[#F2F2F7]"
-              >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${CATEGORY_COLORS[t.category] ?? "bg-gray-100"}`}>
-                  {CATEGORY_ICONS[t.category] ?? (t.type === "income" ? "💰" : "📌")}
+            {filtered.map((tx) => (
+              <div key={tx.id} className="flex items-center gap-3 px-4 py-3 active:bg-[#F2F2F7]">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${CATEGORY_COLORS[tx.category] ?? "bg-gray-100"}`}>
+                  {CATEGORY_ICONS[tx.category] ?? (tx.type === "income" ? "💰" : "📌")}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#1C1C1E] truncate">{t.description}</p>
+                  <p className="text-sm font-medium text-[#1C1C1E] truncate">{tx.description}</p>
                   <p className="text-xs text-[#8E8E93]">
-                    {t.category}{t.platform ? ` · ${t.platform}` : ""} · {t.date}
+                    {t.categories[tx.category] ?? tx.category}{tx.platform ? ` · ${tx.platform}` : ""} · {tx.date}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className={clsx("text-sm font-bold", t.type === "income" ? "text-[#34C759]" : "text-[#FF3B30]")}>
-                    {t.type === "income" ? "+" : "-"}{t.amount.toLocaleString()}원
+                  <span className={clsx("text-sm font-bold", tx.type === "income" ? "text-[#34C759]" : "text-[#FF3B30]")}>
+                    {tx.type === "income" ? "+" : "-"}{tx.amount.toLocaleString()}원
                   </span>
                   <div className="flex gap-1">
-                    <button
-                      onClick={() => setEditTarget(t)}
-                      className="p-1 text-[#C7C7CC] hover:text-[#007AFF]"
-                    >
+                    <button onClick={() => setEditTarget(tx)} className="p-1 text-[#C7C7CC] hover:text-[#007AFF]">
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
-                    <button
-                      onClick={() => handleDelete(t.id)}
-                      className="p-1 text-[#C7C7CC] hover:text-[#FF3B30]"
-                    >
+                    <button onClick={() => handleDelete(tx.id)} className="p-1 text-[#C7C7CC] hover:text-[#FF3B30]">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -204,12 +196,12 @@ export default function TransactionsPage() {
       </button>
 
       {showModal && (
-        <Modal title="거래 추가" onClose={() => setShowModal(false)}>
+        <Modal title={t.transactions.add} onClose={() => setShowModal(false)}>
           <TransactionForm onSubmit={handleCreate} onCancel={() => setShowModal(false)} />
         </Modal>
       )}
       {editTarget && (
-        <Modal title="거래 수정" onClose={() => setEditTarget(null)}>
+        <Modal title={t.transactions.edit} onClose={() => setEditTarget(null)}>
           <TransactionForm initial={editTarget} onSubmit={handleUpdate} onCancel={() => setEditTarget(null)} />
         </Modal>
       )}
