@@ -46,6 +46,7 @@ export interface DashboardStats {
   monthlyData: MonthlyData[];
   categoryExpenses: CategoryExpense[];
   recentTransactions: Transaction[];
+  maxExpense?: Transaction;
 }
 
 export interface PlatformSalesSummary {

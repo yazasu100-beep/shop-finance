@@ -77,6 +77,11 @@ export async function GET(request: NextRequest) {
       monthlyData.push({ month: label, income: monthIncome, expense: monthExpense, profit: monthIncome - monthExpense });
     }
 
+    const expenseTransactions = transactions.filter((t) => t.type === "expense");
+    const maxExpense = expenseTransactions.length > 0
+      ? expenseTransactions.reduce((max, t) => t.amount > max.amount ? t : max, expenseTransactions[0])
+      : undefined;
+
     const stats: DashboardStats = {
       totalIncome,
       totalExpense,
@@ -86,6 +91,7 @@ export async function GET(request: NextRequest) {
       monthlyData,
       categoryExpenses,
       recentTransactions: transactions.slice(0, 10),
+      maxExpense,
     };
 
     return NextResponse.json(stats);
