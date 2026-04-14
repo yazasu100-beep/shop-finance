@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { PlatformSale, Platform } from "@/types";
 import { format } from "date-fns";
 import { useLanguage } from "@/context/LanguageContext";
+import { formatCurrency } from "@/lib/utils";
 
 const PLATFORMS: Platform[] = [
   "스마트스토어", "쿠팡", "11번가", "G마켓", "옥션", "카카오쇼핑", "자사몰", "기타",
@@ -95,7 +96,7 @@ export default function PlatformForm({ initial, onSubmit, onCancel }: PlatformFo
       <div className="bg-blue-50 rounded-lg px-4 py-3 flex justify-between items-center">
         <span className="text-sm text-blue-700 font-medium">{t.form.netSales}</span>
         <span className={`text-sm font-bold ${net >= 0 ? "text-blue-700" : "text-red-600"}`}>
-          {net.toLocaleString()}원
+          {formatCurrency(net)}
         </span>
       </div>
 

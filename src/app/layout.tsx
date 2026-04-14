@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import BottomNav from "@/components/layout/BottomNav";
 import { LanguageProvider } from "@/context/LanguageContext";
+import { CategoryProvider } from "@/context/CategoryContext";
 
 export const metadata: Metadata = {
   title: "쇼핑몰 가계부",
@@ -19,12 +20,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko">
       <body>
         <LanguageProvider>
+        <CategoryProvider>
           <div className="min-h-screen bg-[#F2F2F7]">
             <main className="max-w-lg mx-auto">
               {children}
             </main>
           </div>
           <BottomNav />
+        </CategoryProvider>
         </LanguageProvider>
       </body>
     </html>

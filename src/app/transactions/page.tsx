@@ -10,6 +10,7 @@ import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Pencil, Trash2 } from "lucide-react";
 import clsx from "clsx";
 import { useLanguage } from "@/context/LanguageContext";
+import { formatCurrency } from "@/lib/utils";
 
 const CATEGORY_ICONS: Record<string, string> = {
   상품판매: "🛍️", 환불수입: "↩️", 기타수입: "💰",
@@ -53,7 +54,8 @@ export default function TransactionsPage() {
     let result = transactions;
     if (typeFilter !== "all") result = result.filter((tx) => tx.type === typeFilter);
     if (search) result = result.filter((tx) =>
-      tx.description.includes(search) || tx.category.includes(search)
+      tx.category.toLowerCase().includes(search.toLowerCase()) ||
+      (tx.memo ?? "").toLowerCase().includes(search.toLowerCase())
     );
     setFiltered(result);
   }, [transactions, typeFilter, search]);
@@ -90,11 +92,9 @@ export default function TransactionsPage() {
 
   return (
     <div className="page-content">
-      {/* Header */}
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-[#E5E5EA]">
         <div className="px-4 py-3">
           <h1 className="text-base font-bold text-[#1C1C1E] mb-2">{t.transactions.title}</h1>
-          {/* 탭 필터 */}
           <div className="flex gap-1.5 mb-2">
             {(["all", "income", "expense"] as const).map((f) => (
               <button
@@ -103,10 +103,8 @@ export default function TransactionsPage() {
                 className={clsx(
                   "flex-1 py-1.5 rounded-xl text-xs font-semibold transition-colors",
                   typeFilter === f
-                    ? f === "income"
-                      ? "bg-[#34C759] text-white"
-                      : f === "expense"
-                      ? "bg-[#FF3B30] text-white"
+                    ? f === "income" ? "bg-[#34C759] text-white"
+                      : f === "expense" ? "bg-[#FF3B30] text-white"
                       : "bg-[#007AFF] text-white"
                     : "bg-[#F2F2F7] text-[#8E8E93]"
                 )}
@@ -115,7 +113,6 @@ export default function TransactionsPage() {
               </button>
             ))}
           </div>
-          {/* 검색 */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#8E8E93]" />
             <input
@@ -138,10 +135,7 @@ export default function TransactionsPage() {
         ].map((item) => (
           <div key={item.label} className="card text-center py-3">
             <p className="text-[10px] text-[#8E8E93] mb-0.5">{item.label}</p>
-            <p className={`text-sm font-bold ${item.color}`}>
-              {item.value >= 0 && item.label === t.transactions.netProfit && item.value > 0 ? "+" : ""}
-              {item.value.toLocaleString()}원
-            </p>
+            <p className={`text-sm font-bold ${item.color}`}>{formatCurrency(item.value)}</p>
           </div>
         ))}
       </div>
@@ -159,18 +153,18 @@ export default function TransactionsPage() {
           <div className="card p-0 overflow-hidden divide-y divide-[#F2F2F7]">
             {filtered.map((tx) => (
               <div key={tx.id} className="flex items-center gap-3 px-4 py-3 active:bg-[#F2F2F7]">
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${CATEGORY_COLORS[tx.category] ?? "bg-gray-100"}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg flex-shrink-0 ${CATEGORY_COLORS[tx.category] ?? "bg-blue-50"}`}>
                   {CATEGORY_ICONS[tx.category] ?? (tx.type === "income" ? "💰" : "📌")}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#1C1C1E] truncate">{tx.description}</p>
+                  <p className="text-sm font-medium text-[#1C1C1E] truncate">{t.categories[tx.category] ?? tx.category}</p>
                   <p className="text-xs text-[#8E8E93]">
-                    {t.categories[tx.category] ?? tx.category}{tx.platform ? ` · ${tx.platform}` : ""} · {tx.date}
+                    {tx.date}{tx.platform ? ` · ${tx.platform}` : ""}{tx.memo ? ` · ${tx.memo}` : ""}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span className={clsx("text-sm font-bold", tx.type === "income" ? "text-[#34C759]" : "text-[#FF3B30]")}>
-                    {tx.type === "income" ? "+" : "-"}{tx.amount.toLocaleString()}원
+                    {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
                   </span>
                   <div className="flex gap-1">
                     <button onClick={() => setEditTarget(tx)} className="p-1 text-[#C7C7CC] hover:text-[#007AFF]">
@@ -187,7 +181,6 @@ export default function TransactionsPage() {
         )}
       </div>
 
-      {/* 플로팅 + 버튼 */}
       <button
         onClick={() => setShowModal(true)}
         className="fixed bottom-20 right-4 w-14 h-14 bg-[#007AFF] rounded-full shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform"

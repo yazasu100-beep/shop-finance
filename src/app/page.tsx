@@ -10,6 +10,7 @@ import Modal from "@/components/ui/Modal";
 import TransactionForm from "@/components/transactions/TransactionForm";
 import type { DashboardStats, Transaction } from "@/types";
 import { useLanguage } from "@/context/LanguageContext";
+import { formatCurrency } from "@/lib/utils";
 
 const CATEGORY_ICONS: Record<string, string> = {
   상품판매: "🛍️", 환불수입: "↩️", 기타수입: "💰",
@@ -66,22 +67,15 @@ export default function HomePage() {
 
   return (
     <div className="page-content">
-      {/* Header */}
       <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-[#E5E5EA]">
         <div className="px-4 py-3 flex items-center justify-between">
-          <button
-            onClick={() => setCurrentMonth(m => subMonths(m, 1))}
-            className="p-1.5 text-[#8E8E93] active:bg-[#F2F2F7] rounded-xl"
-          >
+          <button onClick={() => setCurrentMonth(m => subMonths(m, 1))} className="p-1.5 text-[#8E8E93] active:bg-[#F2F2F7] rounded-xl">
             <ChevronLeft className="w-5 h-5" />
           </button>
           <h1 className="text-base font-bold text-[#1C1C1E]">
             {format(currentMonth, t.home.dateFormat, { locale })}
           </h1>
-          <button
-            onClick={() => setCurrentMonth(m => addMonths(m, 1))}
-            className="p-1.5 text-[#8E8E93] active:bg-[#F2F2F7] rounded-xl"
-          >
+          <button onClick={() => setCurrentMonth(m => addMonths(m, 1))} className="p-1.5 text-[#8E8E93] active:bg-[#F2F2F7] rounded-xl">
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
@@ -97,35 +91,26 @@ export default function HomePage() {
             <div className="flex justify-between items-end mb-3">
               <div>
                 <p className="text-xs text-[#8E8E93]">{t.home.income}</p>
-                <p className="text-2xl font-bold text-[#1C1C1E]">
-                  {income.toLocaleString()}원
-                </p>
+                <p className="text-2xl font-bold text-[#1C1C1E]">{formatCurrency(income)}</p>
               </div>
               <div className="text-right">
                 <p className="text-xs text-[#8E8E93]">{t.home.expense}</p>
-                <p className="text-xl font-semibold text-[#FF3B30]">
-                  {expense.toLocaleString()}원
-                </p>
+                <p className="text-xl font-semibold text-[#FF3B30]">{formatCurrency(expense)}</p>
               </div>
             </div>
             <div className="w-full bg-[#F2F2F7] rounded-full h-2 mb-3">
-              <div
-                className="h-2 rounded-full bg-[#FF3B30] transition-all"
-                style={{ width: `${expenseRatio}%` }}
-              />
+              <div className="h-2 rounded-full bg-[#FF3B30] transition-all" style={{ width: `${expenseRatio}%` }} />
             </div>
             <div className="flex justify-between text-xs">
               <div>
                 <p className="text-[#8E8E93]">{t.home.balance}</p>
                 <p className={`font-semibold ${net >= 0 ? "text-[#34C759]" : "text-[#FF3B30]"}`}>
-                  {net >= 0 ? "+" : ""}{net.toLocaleString()}원
+                  {net >= 0 ? "+" : ""}{formatCurrency(net)}
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-[#8E8E93]">{t.home.savingRate}</p>
-                <p className={`font-semibold ${savingsRate >= 0 ? "text-[#007AFF]" : "text-[#FF3B30]"}`}>
-                  {savingsRate}%
-                </p>
+                <p className={`font-semibold ${savingsRate >= 0 ? "text-[#007AFF]" : "text-[#FF3B30]"}`}>{savingsRate}%</p>
               </div>
             </div>
           </div>
@@ -136,21 +121,13 @@ export default function HomePage() {
               <p className="text-xs font-medium text-[#8E8E93] mb-3">{t.home.topPlatform}</p>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-xl">
-                    🏪
-                  </div>
+                  <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-xl">🏪</div>
                   <div>
-                    <p className="text-sm font-semibold text-[#1C1C1E]">
-                      {stats!.platformSales[0].platform}
-                    </p>
-                    <p className="text-xs text-[#8E8E93]">
-                      {stats!.platformSales[0].orderCount}{t.home.orders}
-                    </p>
+                    <p className="text-sm font-semibold text-[#1C1C1E]">{stats!.platformSales[0].platform}</p>
+                    <p className="text-xs text-[#8E8E93]">{stats!.platformSales[0].orderCount}{t.home.orders}</p>
                   </div>
                 </div>
-                <p className="text-base font-bold text-[#1C1C1E]">
-                  {stats!.platformSales[0].salesAmount.toLocaleString()}원
-                </p>
+                <p className="text-base font-bold text-[#1C1C1E]">{formatCurrency(stats!.platformSales[0].salesAmount)}</p>
               </div>
             </div>
           )}
@@ -167,18 +144,11 @@ export default function HomePage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between text-sm mb-1">
-                        <span className="text-[#1C1C1E] font-medium truncate">
-                          {t.categories[item.category] ?? item.category}
-                        </span>
-                        <span className="text-[#1C1C1E] font-semibold ml-2 flex-shrink-0">
-                          {item.amount.toLocaleString()}원
-                        </span>
+                        <span className="text-[#1C1C1E] font-medium truncate">{t.categories[item.category] ?? item.category}</span>
+                        <span className="text-[#1C1C1E] font-semibold ml-2 flex-shrink-0">{formatCurrency(item.amount)}</span>
                       </div>
                       <div className="w-full bg-[#F2F2F7] rounded-full h-1">
-                        <div
-                          className="h-1 rounded-full bg-[#007AFF]"
-                          style={{ width: `${Math.min(item.percentage, 100)}%` }}
-                        />
+                        <div className="h-1 rounded-full bg-[#007AFF]" style={{ width: `${Math.min(item.percentage, 100)}%` }} />
                       </div>
                       <p className="text-right text-xs text-[#8E8E93] mt-0.5">{item.percentage.toFixed(0)}%</p>
                     </div>
@@ -201,13 +171,11 @@ export default function HomePage() {
                       {CATEGORY_ICONS[tx.category] ?? (tx.type === "income" ? "💰" : "📌")}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-[#1C1C1E] truncate">{tx.description}</p>
-                      <p className="text-xs text-[#8E8E93]">
-                        {t.categories[tx.category] ?? tx.category} · {tx.date}
-                      </p>
+                      <p className="text-sm font-medium text-[#1C1C1E] truncate">{t.categories[tx.category] ?? tx.category}</p>
+                      <p className="text-xs text-[#8E8E93]">{tx.date}{tx.platform ? ` · ${tx.platform}` : ""}</p>
                     </div>
                     <span className={`text-sm font-semibold flex-shrink-0 ${tx.type === "income" ? "text-[#34C759]" : "text-[#FF3B30]"}`}>
-                      {tx.type === "income" ? "+" : "-"}{tx.amount.toLocaleString()}원
+                      {tx.type === "income" ? "+" : "-"}{formatCurrency(tx.amount)}
                     </span>
                   </div>
                 ))}
@@ -223,7 +191,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* 플로팅 + 버튼 */}
       <button
         onClick={() => setShowAddModal(true)}
         className="fixed bottom-20 right-4 w-14 h-14 bg-[#007AFF] rounded-full shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform"
@@ -233,10 +200,7 @@ export default function HomePage() {
 
       {showAddModal && (
         <Modal title={t.home.add} onClose={() => setShowAddModal(false)}>
-          <TransactionForm
-            onSubmit={handleCreate}
-            onCancel={() => setShowAddModal(false)}
-          />
+          <TransactionForm onSubmit={handleCreate} onCancel={() => setShowAddModal(false)} />
         </Modal>
       )}
     </div>
