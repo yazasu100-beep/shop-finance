@@ -1,181 +1,239 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import {
-  TrendingUp,
-  TrendingDown,
-  DollarSign,
-  Percent,
-} from "lucide-react";
-import StatsCard from "@/components/dashboard/StatsCard";
-import MonthlyChart from "@/components/dashboard/MonthlyChart";
-import PlatformChart from "@/components/dashboard/PlatformChart";
-import RecentTransactions from "@/components/dashboard/RecentTransactions";
+import { useEffect, useState, useCallback } from "react";
+import { format, startOfMonth, endOfMonth } from "date-fns";
+import { ChevronLeft, ChevronRight, Settings, TrendingUp, TrendingDown, Plus } from "lucide-react";
+import { subMonths, addMonths } from "date-fns";
+import { ko } from "date-fns/locale";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
-import type { DashboardStats } from "@/types";
+import Modal from "@/components/ui/Modal";
+import TransactionForm from "@/components/transactions/TransactionForm";
+import type { DashboardStats, Transaction } from "@/types";
 
-export default function DashboardPage() {
+const CATEGORY_ICONS: Record<string, string> = {
+  상품판매: "🛍️", 환불수입: "↩️", 기타수입: "💰",
+  상품매입: "📦", 배송비: "🚚", 광고비: "📣",
+  플랫폼수수료: "💳", 포장재: "📫", 인건비: "👤",
+  임대료: "🏢", 기타지출: "📌",
+};
+
+const CATEGORY_COLORS: Record<string, string> = {
+  상품판매: "bg-blue-100", 환불수입: "bg-purple-100", 기타수입: "bg-green-100",
+  상품매입: "bg-orange-100", 배송비: "bg-yellow-100", 광고비: "bg-pink-100",
+  플랫폼수수료: "bg-red-100", 포장재: "bg-teal-100", 인건비: "bg-indigo-100",
+  임대료: "bg-gray-100", 기타지출: "bg-slate-100",
+};
+
+export default function HomePage() {
+  const [currentMonth, setCurrentMonth] = useState(new Date());
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [months, setMonths] = useState(6);
+  const [showAddModal, setShowAddModal] = useState(false);
 
-  useEffect(() => {
+  const startDate = format(startOfMonth(currentMonth), "yyyy-MM-dd");
+  const endDate = format(endOfMonth(currentMonth), "yyyy-MM-dd");
+
+  const fetchStats = useCallback(async () => {
     setLoading(true);
-    fetch(`/api/dashboard?months=${months}`)
-      .then((r) => r.json())
-      .then((data) => {
-        setStats(data?.error ? null : data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [months]);
+    try {
+      const res = await fetch(`/api/dashboard?months=1&startDate=${startDate}&endDate=${endDate}`);
+      const data = await res.json();
+      setStats(data?.error ? null : data);
+    } catch { setStats(null); }
+    finally { setLoading(false); }
+  }, [startDate, endDate]);
 
-  if (loading) return <LoadingSpinner size="lg" />;
-  if (!stats)
-    return (
-      <div className="card text-center py-12">
-        <p className="text-gray-500">데이터를 불러올 수 없습니다.</p>
-        <p className="text-sm text-gray-400 mt-1">
-          Notion API 설정을 확인해주세요.
-        </p>
-      </div>
-    );
+  useEffect(() => { fetchStats(); }, [fetchStats]);
 
-  const fmt = (n: number) =>
-    n >= 0
-      ? `+${n.toLocaleString()}원`
-      : `${n.toLocaleString()}원`;
+  const handleCreate = async (data: Omit<Transaction, "id" | "createdAt">) => {
+    await fetch("/api/transactions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    setShowAddModal(false);
+    await fetchStats();
+  };
+
+  const income = stats?.totalIncome ?? 0;
+  const expense = stats?.totalExpense ?? 0;
+  const net = income - expense;
+  const savingsRate = income > 0 ? Math.round((net / income) * 100) : 0;
+  const expenseRatio = income > 0 ? Math.min((expense / income) * 100, 100) : 0;
 
   return (
-    <div className="space-y-5">
-      {/* 기간 선택 */}
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">최근 {months}개월 기준</p>
-        <div className="flex gap-2">
-          {[3, 6, 12].map((m) => (
-            <button
-              key={m}
-              onClick={() => setMonths(m)}
-              className={
-                months === m
-                  ? "btn-primary text-xs py-1.5 px-3"
-                  : "btn-secondary text-xs py-1.5 px-3"
-              }
-            >
-              {m}개월
-            </button>
-          ))}
+    <div className="page-content">
+      {/* Header */}
+      <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-xl border-b border-[#E5E5EA]">
+        <div className="px-4 py-3 flex items-center justify-between">
+          <button
+            onClick={() => setCurrentMonth(m => subMonths(m, 1))}
+            className="p-1.5 text-[#8E8E93] active:bg-[#F2F2F7] rounded-xl"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <h1 className="text-base font-bold text-[#1C1C1E]">
+            {format(currentMonth, "yyyy년 M월", { locale: ko })}
+          </h1>
+          <button
+            onClick={() => setCurrentMonth(m => addMonths(m, 1))}
+            className="p-1.5 text-[#8E8E93] active:bg-[#F2F2F7] rounded-xl"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
-      </div>
+      </header>
 
-      {/* 핵심 지표 카드 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        <StatsCard
-          title="총 수입"
-          value={`${stats.totalIncome.toLocaleString()}원`}
-          icon={TrendingUp}
-          color="blue"
-        />
-        <StatsCard
-          title="총 지출"
-          value={`${stats.totalExpense.toLocaleString()}원`}
-          icon={TrendingDown}
-          color="red"
-        />
-        <StatsCard
-          title="순이익"
-          value={fmt(stats.netProfit)}
-          icon={DollarSign}
-          color={stats.netProfit >= 0 ? "green" : "red"}
-          subValue={`마진율 ${stats.marginRate.toFixed(1)}%`}
-        />
-        <StatsCard
-          title="마진율"
-          value={`${stats.marginRate.toFixed(1)}%`}
-          icon={Percent}
-          color="purple"
-          subValue={
-            stats.platformSales[0]
-              ? `최상위: ${stats.platformSales[0].platform}`
-              : undefined
-          }
-        />
-      </div>
+      {loading ? (
+        <LoadingSpinner size="lg" />
+      ) : (
+        <div className="px-4 pt-4 space-y-3">
+          {/* 수입/지출 요약 카드 */}
+          <div className="card">
+            <p className="text-xs font-medium text-[#8E8E93] mb-3">수입 / 지출</p>
+            <div className="flex justify-between items-end mb-3">
+              <div>
+                <p className="text-xs text-[#8E8E93]">수입</p>
+                <p className="text-2xl font-bold text-[#1C1C1E]">
+                  {income.toLocaleString()}원
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-[#8E8E93]">지출</p>
+                <p className="text-xl font-semibold text-[#FF3B30]">
+                  {expense.toLocaleString()}원
+                </p>
+              </div>
+            </div>
+            {/* 진행 바 */}
+            <div className="w-full bg-[#F2F2F7] rounded-full h-2 mb-3">
+              <div
+                className="h-2 rounded-full bg-[#FF3B30] transition-all"
+                style={{ width: `${expenseRatio}%` }}
+              />
+            </div>
+            <div className="flex justify-between text-xs">
+              <div>
+                <p className="text-[#8E8E93]">잔여금액</p>
+                <p className={`font-semibold ${net >= 0 ? "text-[#34C759]" : "text-[#FF3B30]"}`}>
+                  {net >= 0 ? "+" : ""}{net.toLocaleString()}원
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-[#8E8E93]">저축률</p>
+                <p className={`font-semibold ${savingsRate >= 0 ? "text-[#007AFF]" : "text-[#FF3B30]"}`}>
+                  {savingsRate}%
+                </p>
+              </div>
+            </div>
+          </div>
 
-      {/* 차트 영역 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2">
-          <MonthlyChart data={stats.monthlyData} />
-        </div>
-        <div>
-          <PlatformChart data={stats.platformSales} />
-        </div>
-      </div>
+          {/* 플랫폼 매출 Top */}
+          {(stats?.platformSales?.length ?? 0) > 0 && (
+            <div className="card">
+              <p className="text-xs font-medium text-[#8E8E93] mb-3">최고 매출 플랫폼</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-xl">
+                    🏪
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-[#1C1C1E]">
+                      {stats!.platformSales[0].platform}
+                    </p>
+                    <p className="text-xs text-[#8E8E93]">
+                      {stats!.platformSales[0].orderCount}건
+                    </p>
+                  </div>
+                </div>
+                <p className="text-base font-bold text-[#1C1C1E]">
+                  {stats!.platformSales[0].salesAmount.toLocaleString()}원
+                </p>
+              </div>
+            </div>
+          )}
 
-      {/* 하단 영역 */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* 카테고리별 지출 */}
-        <div className="card">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">카테고리별 지출</h3>
-          {stats.categoryExpenses.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">데이터 없음</p>
-          ) : (
-            <div className="space-y-3">
-              {stats.categoryExpenses.slice(0, 6).map((item) => (
-                <div key={item.category}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-gray-600">{item.category}</span>
-                    <span className="font-medium">
-                      {item.amount.toLocaleString()}원
+          {/* 카테고리별 지출 */}
+          {(stats?.categoryExpenses?.length ?? 0) > 0 && (
+            <div className="card">
+              <p className="text-xs font-medium text-[#8E8E93] mb-3">카테고리별 지출</p>
+              <div className="space-y-3">
+                {stats!.categoryExpenses.slice(0, 5).map((item) => (
+                  <div key={item.category} className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0 ${CATEGORY_COLORS[item.category] ?? "bg-gray-100"}`}>
+                      {CATEGORY_ICONS[item.category] ?? "📌"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-[#1C1C1E] font-medium truncate">{item.category}</span>
+                        <span className="text-[#1C1C1E] font-semibold ml-2 flex-shrink-0">
+                          {item.amount.toLocaleString()}원
+                        </span>
+                      </div>
+                      <div className="w-full bg-[#F2F2F7] rounded-full h-1">
+                        <div
+                          className="h-1 rounded-full bg-[#007AFF]"
+                          style={{ width: `${Math.min(item.percentage, 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-right text-xs text-[#8E8E93] mt-0.5">{item.percentage.toFixed(0)}%</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 최근 거래 */}
+          <div className="card">
+            <p className="text-xs font-medium text-[#8E8E93] mb-3">최근 거래</p>
+            {(stats?.recentTransactions?.length ?? 0) === 0 ? (
+              <p className="text-sm text-[#8E8E93] text-center py-4">거래 내역이 없습니다</p>
+            ) : (
+              <div className="space-y-3">
+                {stats!.recentTransactions.slice(0, 5).map((t) => (
+                  <div key={t.id} className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-base flex-shrink-0 ${CATEGORY_COLORS[t.category] ?? "bg-gray-100"}`}>
+                      {CATEGORY_ICONS[t.category] ?? (t.type === "income" ? "💰" : "📌")}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-[#1C1C1E] truncate">{t.description}</p>
+                      <p className="text-xs text-[#8E8E93]">{t.category} · {t.date}</p>
+                    </div>
+                    <span className={`text-sm font-semibold flex-shrink-0 ${t.type === "income" ? "text-[#34C759]" : "text-[#FF3B30]"}`}>
+                      {t.type === "income" ? "+" : "-"}{t.amount.toLocaleString()}원
                     </span>
                   </div>
-                  <div className="w-full bg-gray-100 rounded-full h-1.5">
-                    <div
-                      className="bg-red-400 h-1.5 rounded-full"
-                      style={{ width: `${Math.min(item.percentage, 100)}%` }}
-                    />
-                  </div>
-                  <p className="text-right text-xs text-gray-400 mt-0.5">
-                    {item.percentage.toFixed(1)}%
-                  </p>
-                </div>
-              ))}
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Notion 미연결 안내 */}
+          {!stats && !loading && (
+            <div className="card text-center py-8">
+              <p className="text-[#8E8E93] text-sm">Notion API 설정을 확인해주세요</p>
             </div>
           )}
         </div>
+      )}
 
-        {/* 플랫폼별 순매출 */}
-        <div className="card">
-          <h3 className="text-sm font-semibold text-gray-700 mb-4">플랫폼 순매출 순위</h3>
-          {stats.platformSales.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">데이터 없음</p>
-          ) : (
-            <div className="space-y-3">
-              {stats.platformSales.map((item, index) => (
-                <div key={item.platform} className="flex items-center gap-3">
-                  <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center flex-shrink-0">
-                    {index + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800 truncate">
-                      {item.platform}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {item.orderCount}건 · 수수료 후 순매출
-                    </p>
-                  </div>
-                  <span className="text-sm font-semibold text-blue-600 flex-shrink-0">
-                    {item.netAmount.toLocaleString()}원
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* 플로팅 + 버튼 */}
+      <button
+        onClick={() => setShowAddModal(true)}
+        className="fixed bottom-20 right-4 w-14 h-14 bg-[#007AFF] rounded-full shadow-lg flex items-center justify-center z-40 active:scale-95 transition-transform"
+      >
+        <Plus className="w-7 h-7 text-white" />
+      </button>
 
-        {/* 최근 거래 */}
-        <RecentTransactions transactions={stats.recentTransactions} />
-      </div>
+      {showAddModal && (
+        <Modal title="거래 추가" onClose={() => setShowAddModal(false)}>
+          <TransactionForm
+            onSubmit={handleCreate}
+            onCancel={() => setShowAddModal(false)}
+          />
+        </Modal>
+      )}
     </div>
   );
 }

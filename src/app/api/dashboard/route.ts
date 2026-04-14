@@ -6,17 +6,19 @@ import type { DashboardStats, PlatformSalesSummary, CategoryExpense, MonthlyData
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const months = parseInt(searchParams.get("months") ?? "6");
+  const paramStart = searchParams.get("startDate");
+  const paramEnd = searchParams.get("endDate");
+
+  // 직접 날짜 범위가 주어지면 우선 사용, 없으면 months 기반
+  const startDate = paramStart ?? format(startOfMonth(subMonths(new Date(), months - 1)), "yyyy-MM-dd");
+  const endDate = paramEnd ?? format(endOfMonth(new Date()), "yyyy-MM-dd");
 
   try {
-    const startDate = format(startOfMonth(subMonths(new Date(), months - 1)), "yyyy-MM-dd");
-    const endDate = format(endOfMonth(new Date()), "yyyy-MM-dd");
-
     const [transactions, platformSales] = await Promise.all([
       getTransactions(startDate, endDate),
       getPlatformSales(startDate, endDate),
     ]);
 
-    // 수입/지출 합계
     const totalIncome = transactions
       .filter((t) => t.type === "income")
       .reduce((sum, t) => sum + t.amount, 0);
@@ -28,17 +30,16 @@ export async function GET(request: NextRequest) {
     const netProfit = totalIncome - totalExpense;
     const marginRate = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0;
 
-    // 플랫폼별 매출 요약
+    // 플랫폼별 매출
     const platformMap = new Map<string, { salesAmount: number; orderCount: number; netAmount: number }>();
     for (const sale of platformSales) {
-      const existing = platformMap.get(sale.platform) ?? { salesAmount: 0, orderCount: 0, netAmount: 0 };
+      const e = platformMap.get(sale.platform) ?? { salesAmount: 0, orderCount: 0, netAmount: 0 };
       platformMap.set(sale.platform, {
-        salesAmount: existing.salesAmount + sale.salesAmount,
-        orderCount: existing.orderCount + sale.orderCount,
-        netAmount: existing.netAmount + sale.netAmount,
+        salesAmount: e.salesAmount + sale.salesAmount,
+        orderCount: e.orderCount + sale.orderCount,
+        netAmount: e.netAmount + sale.netAmount,
       });
     }
-
     const totalSales = Array.from(platformMap.values()).reduce((s, p) => s + p.salesAmount, 0);
     const platformSalesSummary: PlatformSalesSummary[] = Array.from(platformMap.entries())
       .map(([platform, data]) => ({
@@ -53,7 +54,6 @@ export async function GET(request: NextRequest) {
     for (const t of transactions.filter((t) => t.type === "expense")) {
       categoryMap.set(t.category, (categoryMap.get(t.category) ?? 0) + t.amount);
     }
-
     const categoryExpenses: CategoryExpense[] = Array.from(categoryMap.entries())
       .map(([category, amount]) => ({
         category,
@@ -62,27 +62,19 @@ export async function GET(request: NextRequest) {
       }))
       .sort((a, b) => b.amount - a.amount);
 
-    // 월별 추이 (최근 N개월)
+    // 월별 추이
     const monthlyData: MonthlyData[] = [];
     for (let i = months - 1; i >= 0; i--) {
       const date = subMonths(new Date(), i);
       const monthStr = format(date, "yyyy-MM");
       const label = format(date, "M월");
-
       const monthIncome = transactions
         .filter((t) => t.type === "income" && t.date.startsWith(monthStr))
         .reduce((s, t) => s + t.amount, 0);
-
       const monthExpense = transactions
         .filter((t) => t.type === "expense" && t.date.startsWith(monthStr))
         .reduce((s, t) => s + t.amount, 0);
-
-      monthlyData.push({
-        month: label,
-        income: monthIncome,
-        expense: monthExpense,
-        profit: monthIncome - monthExpense,
-      });
+      monthlyData.push({ month: label, income: monthIncome, expense: monthExpense, profit: monthIncome - monthExpense });
     }
 
     const stats: DashboardStats = {
